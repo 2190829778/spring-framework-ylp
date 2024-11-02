@@ -1,0 +1,21 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.jiawa'
+version = '6.2.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation(project(':spring-context'))
+    implementation('org.projectlombok:lombok:1.18.22')
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+test {
+    useJUnitPlatform()
+}
