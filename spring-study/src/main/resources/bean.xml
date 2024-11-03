@@ -5,7 +5,7 @@
 		https://www.springframework.org/schema/beans/spring-beans.xsd">
 
 	<bean id="user" class="com.jiawa.bean.User">
-		<property name="age" value="10"/>
+		<property name="age" value="101"/>
 		<property name="name" value="yangleping"/>
 	</bean>
 

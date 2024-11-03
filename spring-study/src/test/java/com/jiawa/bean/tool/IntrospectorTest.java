@@ -8,11 +8,14 @@ import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.beans.MutablePropertyValues;
 import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.config.TypedStringValue;
 import org.springframework.beans.factory.support.BeanDefinitionReader;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.SimpleBeanDefinitionRegistry;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
 import org.springframework.core.ResolvableType;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.core.convert.support.GenericConversionService;
 
 import java.beans.*;
 import java.lang.reflect.InvocationTargetException;
@@ -20,6 +23,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class IntrospectorTest {
 
@@ -89,6 +93,21 @@ public class IntrospectorTest {
 			// 4、对beanDefinition进行包装,进行实例化
 			Class<?> beanClass = Class.forName(beanDefinition.getBeanClassName());
 			BeanWrapper beanWrapper = new BeanWrapperImpl(beanClass);
+			//给beanWrapper添加类型转化服务
+			GenericConversionService service = new GenericConversionService();
+			service.addConverter(new Converter<TypedStringValue, String>() {
+				@Override
+				public String convert(TypedStringValue source) {
+					return source.getValue();
+				}
+			});
+			service.addConverter(new Converter<TypedStringValue, Integer>() {
+				@Override
+				public Integer convert(TypedStringValue source) {
+					return Integer.parseInt(Objects.requireNonNull(source.getValue()));
+				}
+			});
+			beanWrapper.setConversionService(service);
 			// 5、进行属性填充(异常，xml中读取的是统一的"1" "0.1" "aaa"  --> 各自的真实属性类型)
 			beanWrapper.setPropertyValues(beanDefinition.getPropertyValues());
 			log.info("bean -> {}", beanWrapper.getWrappedInstance());

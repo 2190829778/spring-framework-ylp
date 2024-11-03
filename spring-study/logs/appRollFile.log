@@ -1,2 +1,9 @@
 2024-11-03 18:57:21  - dog -> Dog{age=null, name='ylp'}
 2024-11-03 18:57:21  - result -> ylp
+2024-11-03 21:47:45  - convert result:123
+2024-11-03 21:48:20  - The number is [100, 12, 23, 54, 56].
+2024-11-03 21:55:20  - The user is User{age=23, name='Tom'}.
+2024-11-03 22:02:07  - beanDefinitionName -> user
+2024-11-03 22:02:07  - bean -> User{age=10, name='yangleping'}
+2024-11-03 22:02:40  - beanDefinitionName -> user
+2024-11-03 22:02:40  - bean -> User{age=101, name='yangleping'}

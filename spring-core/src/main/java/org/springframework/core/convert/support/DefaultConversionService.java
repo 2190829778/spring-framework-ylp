@@ -51,11 +51,13 @@ public class DefaultConversionService extends GenericConversionService {
 	 * {@linkplain DefaultConversionService#addDefaultConverters(ConverterRegistry) default converters}.
 	 */
 	public DefaultConversionService() {
+		// 添加大量的默认的转换器
 		addDefaultConverters(this);
 	}
 
 
 	/**
+	 * 以单例模式创建一个默认的转换器，线程安全，且在需要时，会创建一个默认的转换器
 	 * Return a shared default {@code ConversionService} instance,
 	 * lazily building it once needed.
 	 * <p><b>NOTE:</b> We highly recommend constructing individual
@@ -81,6 +83,7 @@ public class DefaultConversionService extends GenericConversionService {
 	}
 
 	/**
+	 * 添加默认的转换器
 	 * Add converters appropriate for most environments.
 	 * @param converterRegistry the registry of converters to add to
 	 * (must also be castable to ConversionService, for example, being a {@link ConfigurableConversionService})
@@ -102,6 +105,7 @@ public class DefaultConversionService extends GenericConversionService {
 	}
 
 	/**
+	 * 增加通用的转换器
 	 * Add common collection converters.
 	 * @param converterRegistry the registry of converters to add to
 	 * (must also be castable to ConversionService, for example, being a {@link ConfigurableConversionService})
