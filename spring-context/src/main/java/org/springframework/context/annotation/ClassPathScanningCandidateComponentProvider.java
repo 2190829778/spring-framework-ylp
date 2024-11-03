@@ -452,13 +452,21 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 	private Set<BeanDefinition> scanCandidateComponents(String basePackage) {
 		Set<BeanDefinition> candidates = new LinkedHashSet<>();
 		try {
+			// 生成完整的资源解析路径
+			// com.jiawa -> classpath*:com/jiawa/**/*.class
 			String packageSearchPath = ResourcePatternResolver.CLASSPATH_ALL_URL_PREFIX +
 					resolveBasePackage(basePackage) + '/' + this.resourcePattern;
+			// 加载所有路径下的资源，我们看到前缀是"classpath*"，因此项目依赖的jar包中的相同路径下资源都会被加载进来
+			// Spring会将每一个定义的字节码文件加载成为一个Resource资源（包括内部类都是一个Resource资源）
+			// 此处是以资源（流）的方式加载（普通文件），而不是将一个类使用类加载器加载到jvm中
 			Resource[] resources = getResourcePatternResolver().getResources(packageSearchPath);
 			boolean traceEnabled = logger.isTraceEnabled();
 			boolean debugEnabled = logger.isDebugEnabled();
+
+			// 遍历所有的资源文件
 			for (Resource resource : resources) {
 				String filename = resource.getFilename();
+				// 此处忽略CGLIB生成的代理类文件，这个应该不陌生，包含“$$”
 				if (filename != null && filename.contains(ClassUtils.CGLIB_CLASS_SEPARATOR)) {
 					// Ignore CGLIB-generated classes in the classpath
 					continue;
@@ -467,8 +475,14 @@ public class ClassPathScanningCandidateComponentProvider implements EnvironmentC
 					logger.trace("Scanning " + resource);
 				}
 				try {
+					// getMetadataReader方法会生成一个元数据读取器
+					// 我们的例子中是SimpleMetadataReader
 					MetadataReader metadataReader = getMetadataReaderFactory().getMetadataReader(resource);
+					// 检查读取到的类是否可以作为候选组件，即是否符合TypeFilter类型过滤器的要求
+					// 使用IncludeFilter。就算目标类上没有@Component注解，它也会被扫描成为一个Bean
+					// 使用ExcludeFilter，就算目标类上面有@Component注解也不会成为Bean
 					if (isCandidateComponent(metadataReader)) {
+						// 构建一个ScannedGenericBeanDefinition
 						ScannedGenericBeanDefinition sbd = new ScannedGenericBeanDefinition(metadataReader);
 						sbd.setSource(resource);
 						if (isCandidateComponent(sbd)) {

@@ -428,6 +428,10 @@ public class ClassReader {
   }
 
   /**
+   * ClassReader 类的 accept 方法通过 ClassVisitor
+   * 从类文件（ClassFile）中读取并解析类的信息。
+   * 具体来说，它利用 ClassVisitor 的回调方法来逐个访问类的各个部分，
+   * 如类名、方法、字段等。这些信息是通过类文件中的偏移量和字节码数据来定位和解析的。
    * Makes the given visitor visit the JVMS ClassFile structure passed to the constructor of this
    * {@link ClassReader}.
    *

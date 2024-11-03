@@ -247,22 +247,32 @@ public class ClassPathBeanDefinitionScanner extends ClassPathScanningCandidateCo
 
 	/**
 	 * Perform a scan within the specified base packages.
+	 * <p>
+	 * This method is responsible for scanning the specified base packages to find and register bean definitions.
+	 * It can optionally include annotation configuration processing. The specific steps include:
+	 * 1. Recording the current number of bean definitions.
+	 * 2. Performing package scanning.
+	 * 3. Optionally registering annotation configuration processors.
+	 * 4. Calculating and returning the number of beans registered during this scan.
+	 *
 	 * @param basePackages the packages to check for annotated classes
 	 * @return number of beans registered
 	 */
 	public int scan(String... basePackages) {
-		int beanCountAtScanStart = this.registry.getBeanDefinitionCount();
+	    // 存储扫描前的 Bean 定义数量，以便稍后计算此次扫描过程中注册的 Bean 数量。
+	    int beanCountAtScanStart = this.registry.getBeanDefinitionCount();
 
-		doScan(basePackages);
+	    // 执行实际的包扫描。
+	    doScan(basePackages);
 
-		// Register annotation config processors, if necessary.
-		if (this.includeAnnotationConfig) {
-			AnnotationConfigUtils.registerAnnotationConfigProcessors(this.registry);
-		}
+	    // 如果需要，注册注解配置处理器
+	    if (this.includeAnnotationConfig) {
+	        AnnotationConfigUtils.registerAnnotationConfigProcessors(this.registry);
+	    }
 
-		return (this.registry.getBeanDefinitionCount() - beanCountAtScanStart);
+	    // 计算并返回此次扫描过程中注册的 Bean 数量。
+	    return (this.registry.getBeanDefinitionCount() - beanCountAtScanStart);
 	}
-
 	/**
 	 * Perform a scan within the specified base packages,
 	 * returning the registered bean definitions.
@@ -271,31 +281,52 @@ public class ClassPathBeanDefinitionScanner extends ClassPathScanningCandidateCo
 	 * @param basePackages the packages to check for annotated classes
 	 * @return set of beans registered if any for tooling registration purposes (never {@code null})
 	 */
+	/**
+	 * 执行扫描操作，寻找并注册指定基础包下的Bean定义
+	 * 此方法主要用于启动组件扫描，根据提供的基础包路径，查找候选组件，
+	 * 并将其注册到Bean定义中
+	 *
+	 * @param basePackages 基础包的全限定名数组，用于指定扫描的范围
+	 * @return 返回一个包含已处理Bean定义的集合
+	 */
 	protected Set<BeanDefinitionHolder> doScan(String... basePackages) {
-		Assert.notEmpty(basePackages, "At least one base package must be specified");
-		Set<BeanDefinitionHolder> beanDefinitions = new LinkedHashSet<>();
-		for (String basePackage : basePackages) {
-			Set<BeanDefinition> candidates = findCandidateComponents(basePackage);
-			for (BeanDefinition candidate : candidates) {
-				ScopeMetadata scopeMetadata = this.scopeMetadataResolver.resolveScopeMetadata(candidate);
-				candidate.setScope(scopeMetadata.getScopeName());
-				String beanName = this.beanNameGenerator.generateBeanName(candidate, this.registry);
-				if (candidate instanceof AbstractBeanDefinition abstractBeanDefinition) {
-					postProcessBeanDefinition(abstractBeanDefinition, beanName);
-				}
-				if (candidate instanceof AnnotatedBeanDefinition annotatedBeanDefinition) {
-					AnnotationConfigUtils.processCommonDefinitionAnnotations(annotatedBeanDefinition);
-				}
-				if (checkCandidate(beanName, candidate)) {
-					BeanDefinitionHolder definitionHolder = new BeanDefinitionHolder(candidate, beanName);
-					definitionHolder =
-							AnnotationConfigUtils.applyScopedProxyMode(scopeMetadata, definitionHolder, this.registry);
-					beanDefinitions.add(definitionHolder);
-					registerBeanDefinition(definitionHolder, this.registry);
-				}
-			}
-		}
-		return beanDefinitions;
+	    // 确保至少指定了一个基础包，因为方法需要知道从哪里开始扫描
+	    Assert.notEmpty(basePackages, "At least one base package must be specified");
+	    // 创建一个集合，用于存储最终处理后的Bean定义
+	    Set<BeanDefinitionHolder> beanDefinitions = new LinkedHashSet<>();
+	    // 遍历每个基础包，进行扫描操作
+	    for (String basePackage : basePackages) {
+	        // 在当前基础包下寻找候选组件
+	        Set<BeanDefinition> candidates = findCandidateComponents(basePackage);
+	        // 遍历每个候选组件，进行处理
+	        for (BeanDefinition candidate : candidates) {
+	            // 解析候选组件的作用域
+	            ScopeMetadata scopeMetadata = this.scopeMetadataResolver.resolveScopeMetadata(candidate);
+	            // 设置候选组件的作用域
+	            candidate.setScope(scopeMetadata.getScopeName());
+	            // 生成候选组件的Bean名称
+	            String beanName = this.beanNameGenerator.generateBeanName(candidate, this.registry);
+	            // 如果候选组件是AbstractBeanDefinition类型，则对其进行后处理
+	            if (candidate instanceof AbstractBeanDefinition abstractBeanDefinition) {
+	                postProcessBeanDefinition(abstractBeanDefinition, beanName);
+	            }
+	            // 如果候选组件是AnnotatedBeanDefinition类型，则处理其上的通用注解
+	            if (candidate instanceof AnnotatedBeanDefinition annotatedBeanDefinition) {
+	                AnnotationConfigUtils.processCommonDefinitionAnnotations(annotatedBeanDefinition);
+	            }
+	            // 检查候选组件是否符合条件，如果符合条件，则将其添加到Bean定义集合中
+	            if (checkCandidate(beanName, candidate)) {
+	                BeanDefinitionHolder definitionHolder = new BeanDefinitionHolder(candidate, beanName);
+	                // 根据作用域元数据应用代理模式，并注册Bean定义
+	                definitionHolder =
+	                        AnnotationConfigUtils.applyScopedProxyMode(scopeMetadata, definitionHolder, this.registry);
+	                beanDefinitions.add(definitionHolder);
+	                registerBeanDefinition(definitionHolder, this.registry);
+	            }
+	        }
+	    }
+	    // 返回处理后的Bean定义集合
+	    return beanDefinitions;
 	}
 
 	/**
