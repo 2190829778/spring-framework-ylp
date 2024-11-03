@@ -225,6 +225,7 @@ public class GenericConversionService implements ConfigurableConversionService {
 	@Nullable
 	protected GenericConverter getConverter(TypeDescriptor sourceType, TypeDescriptor targetType) {
 		ConverterCacheKey key = new ConverterCacheKey(sourceType, targetType);
+		//第一次使用缓存里没有，但是第二次使用，可以从缓存中直接获取
 		GenericConverter converter = this.converterCache.get(key);
 		if (converter != null) {
 			return (converter != NO_MATCH ? converter : null);
@@ -465,19 +466,27 @@ public class GenericConversionService implements ConfigurableConversionService {
 	 */
 	private static class Converters {
 
+		// 存取通用的转换器，并不限定转换类型，一般用于兜底
 		private final Set<GenericConverter> globalConverters = new CopyOnWriteArraySet<>();
 
+		// 指定了类型对，对应的转换器们的映射关系。
+		// ConvertiblePair：表示一对，包含sourceType和targetType
+		// ConvertersForPair：这一对对应的转换器们（因为能处理一对类型转换可能存在多个转换器），内部使用一个双端队列Deque来存储，保证顺序
 		private final Map<ConvertiblePair, ConvertersForPair> converters = new ConcurrentHashMap<>(256);
 
 		public void add(GenericConverter converter) {
+			// 获得他的类型对儿
 			Set<ConvertiblePair> convertibleTypes = converter.getConvertibleTypes();
 			if (convertibleTypes == null) {
+				// 如果没有限定转换类型，添加到globalConverters
 				Assert.state(converter instanceof ConditionalConverter,
 						"Only conditional converters may return null convertible types");
 				this.globalConverters.add(converter);
 			}
 			else {
+				// 如果已经存在转换类型，我们写的都在这里
 				for (ConvertiblePair convertiblePair : convertibleTypes) {
+					// 找到与之匹配的加进去，这里是个链表
 					getMatchableConverters(convertiblePair).add(converter);
 				}
 			}
@@ -492,6 +501,7 @@ public class GenericConversionService implements ConfigurableConversionService {
 		}
 
 		/**
+		 * 为了支持多态和转换器的复用性
 		 * Find a {@link GenericConverter} given a source and target type.
 		 * <p>This method will attempt to match all possible converters by working
 		 * through the class and interface hierarchy of the types.
@@ -502,11 +512,16 @@ public class GenericConversionService implements ConfigurableConversionService {
 		@Nullable
 		public GenericConverter find(TypeDescriptor sourceType, TypeDescriptor targetType) {
 			// Search the full type hierarchy
+			// 搜索完整的类型层次结构，父类--->
+			// 比如想要搜索【虎猫 -> 老虎】，但如过虎猫有父类（猫）
+			// 我们还需检索【猫 -> 老虎】
 			List<Class<?>> sourceCandidates = getClassHierarchy(sourceType.getType());
 			List<Class<?>> targetCandidates = getClassHierarchy(targetType.getType());
 			for (Class<?> sourceCandidate : sourceCandidates) {
 				for (Class<?> targetCandidate : targetCandidates) {
+					// 所有的类型都要匹配
 					ConvertiblePair convertiblePair = new ConvertiblePair(sourceCandidate, targetCandidate);
+					// 找到一个就返回
 					GenericConverter converter = getRegisteredConverter(sourceType, targetType, convertiblePair);
 					if (converter != null) {
 						return converter;
@@ -516,11 +531,22 @@ public class GenericConversionService implements ConfigurableConversionService {
 			return null;
 		}
 
+		/**
+		 * 根据给定的源类型和目标类型描述符获取转换器。
+		 *
+		 * 该方法首先尝试查找特定注册的转换器以匹配确切的源类型和目标类型。
+		 * 如果没有找到这样的转换器，它将检查全局转换器，看是否有任何转换器动态匹配该转换。
+		 *
+		 * @param sourceType 源类型的描述符。
+		 * @param targetType 目标的描述符。
+		 * @param convertiblePair 表示源类型和目标类型的对，用于查找特定注册的转换器。
+		 * @return 能够执行转换的转换器，如果没有找到合适的转换器则返回 null。
+		 */
 		@Nullable
 		private GenericConverter getRegisteredConverter(TypeDescriptor sourceType,
 				TypeDescriptor targetType, ConvertiblePair convertiblePair) {
 
-			// Check specifically registered converters
+			// 检查特定注册的转换器
 			ConvertersForPair convertersForPair = this.converters.get(convertiblePair);
 			if (convertersForPair != null) {
 				GenericConverter converter = convertersForPair.getConverter(sourceType, targetType);
@@ -528,7 +554,7 @@ public class GenericConversionService implements ConfigurableConversionService {
 					return converter;
 				}
 			}
-			// Check ConditionalConverters for a dynamic match
+			// 检查条件转换器以进行动态匹配
 			for (GenericConverter globalConverter : this.globalConverters) {
 				if (((ConditionalConverter) globalConverter).matches(sourceType, targetType)) {
 					return globalConverter;
@@ -537,37 +563,63 @@ public class GenericConversionService implements ConfigurableConversionService {
 			return null;
 		}
 
+
 		/**
 		 * Returns an ordered class hierarchy for the given type.
 		 * @param type the type
 		 * @return an ordered list of all classes that the given type extends or implements
 		 */
+		/**
+		 * 获取类的继承层次结构
+		 *
+		 * 此方法旨在获取指定类的所有父类和接口，形成一个完整的继承层次结构列表
+		 * 它不仅包括直接父类，还包括间接父类，直到Object类它还处理数组类型和枚举类型的特殊情况
+		 *
+		 * @param type 要获取继承层次结构的类
+		 * @return 包含类的继承层次结构的列表
+		 */
 		private List<Class<?>> getClassHierarchy(Class<?> type) {
-			List<Class<?>> hierarchy = new ArrayList<>(20);
-			Set<Class<?>> visited = new HashSet<>(20);
-			addToClassHierarchy(0, ClassUtils.resolvePrimitiveIfNecessary(type), false, hierarchy, visited);
-			boolean array = type.isArray();
+		    // 初始化继承层次结构列表和已访问类的集合
+		    List<Class<?>> hierarchy = new ArrayList<>(20);
+		    Set<Class<?>> visited = new HashSet<>(20);
 
-			int i = 0;
-			while (i < hierarchy.size()) {
-				Class<?> candidate = hierarchy.get(i);
-				candidate = (array ? candidate.componentType() : ClassUtils.resolvePrimitiveIfNecessary(candidate));
-				Class<?> superclass = candidate.getSuperclass();
-				if (superclass != null && superclass != Object.class && superclass != Enum.class) {
-					addToClassHierarchy(i + 1, candidate.getSuperclass(), array, hierarchy, visited);
-				}
-				addInterfacesToClassHierarchy(candidate, array, hierarchy, visited);
-				i++;
-			}
+		    // 将初始类添加到继承层次结构中
+		    addToClassHierarchy(0, ClassUtils.resolvePrimitiveIfNecessary(type), false, hierarchy, visited);
 
-			if (Enum.class.isAssignableFrom(type)) {
-				addToClassHierarchy(hierarchy.size(), Enum.class, false, hierarchy, visited);
-				addInterfacesToClassHierarchy(Enum.class, false, hierarchy, visited);
-			}
+		    // 判断类型是否为数组
+		    boolean array = type.isArray();
 
-			addToClassHierarchy(hierarchy.size(), Object.class, array, hierarchy, visited);
-			addToClassHierarchy(hierarchy.size(), Object.class, false, hierarchy, visited);
-			return hierarchy;
+		    int i = 0;
+		    // 遍历继承层次结构列表，添加父类和接口
+		    while (i < hierarchy.size()) {
+		        Class<?> candidate = hierarchy.get(i);
+		        // 对于数组类型，获取其组件类型
+		        candidate = (array ? candidate.componentType() : ClassUtils.resolvePrimitiveIfNecessary(candidate));
+
+		        // 获取当前类的父类
+		        Class<?> superclass = candidate.getSuperclass();
+		        // 如果父类存在且不是Object或Enum类，则添加到继承层次结构中
+		        if (superclass != null && superclass != Object.class && superclass != Enum.class) {
+		            addToClassHierarchy(i + 1, candidate.getSuperclass(), array, hierarchy, visited);
+		        }
+
+		        // 添加当前类实现的接口到继承层次结构中
+		        addInterfacesToClassHierarchy(candidate, array, hierarchy, visited);
+		        i++;
+		    }
+
+		    // 如果初始类是枚举类型，添加Enum类及其接口到继承层次结构中
+		    if (Enum.class.isAssignableFrom(type)) {
+		        addToClassHierarchy(hierarchy.size(), Enum.class, false, hierarchy, visited);
+		        addInterfacesToClassHierarchy(Enum.class, false, hierarchy, visited);
+		    }
+
+		    // 最后添加Object类到继承层次结构中，处理数组和非数组情况
+		    addToClassHierarchy(hierarchy.size(), Object.class, array, hierarchy, visited);
+		    addToClassHierarchy(hierarchy.size(), Object.class, false, hierarchy, visited);
+
+		    // 返回完整的继承层次结构列表
+		    return hierarchy;
 		}
 
 		private void addInterfacesToClassHierarchy(Class<?> type, boolean asArray,
