@@ -45,6 +45,9 @@ import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 /**
+ * 封装java类型，提供对【超类类型】、【接口类型】、【泛型参数】的访问，以及最终解析为类的能力
+ * 这是一个非常常见的类，他能极其方便的简化对反射api的调用，该类在spring中使用率非常高
+ *
  * Encapsulates a Java {@link java.lang.reflect.Type}, providing access to
  * {@link #getSuperType() supertypes}, {@link #getInterfaces() interfaces}, and
  * {@link #getGeneric(int...) generic parameters} along with the ability to ultimately

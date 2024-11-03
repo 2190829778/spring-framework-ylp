@@ -12,13 +12,23 @@ import org.springframework.stereotype.Component;
 public class Dog {
 	private Integer age;
 	private String name;
+	private String color;
 
 	@Override
 	public String toString() {
 		return "Dog{" +
 				"age=" + age +
 				", name='" + name + '\'' +
+				", color='" + color + '\'' +
 				'}';
+	}
+
+	public String getColor() {
+		return color;
+	}
+
+	public void setColor(String color) {
+		this.color = color;
 	}
 
 	public Integer getAge() {
