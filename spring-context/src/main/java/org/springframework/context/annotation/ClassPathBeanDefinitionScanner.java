@@ -37,6 +37,7 @@ import org.springframework.util.ObjectUtils;
 import org.springframework.util.PatternMatchUtils;
 
 /**
+ * 类路径扫描器，用于扫描包路径下的类，注册bean定义
  * A bean definition scanner that detects bean candidates on the classpath,
  * registering corresponding bean definitions with a given registry ({@code BeanFactory}
  * or {@code ApplicationContext}).

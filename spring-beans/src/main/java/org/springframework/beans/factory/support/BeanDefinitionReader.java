@@ -22,6 +22,9 @@ import org.springframework.core.io.ResourceLoader;
 import org.springframework.lang.Nullable;
 
 /**
+ * 我们不可能为每个类手动编写与之对应的beanDefinition，元数据还是要从xml或者注解或者配置类中读取，
+ * spring提供了相应的工具类去读取元数据，BeanDefinitionReader就是一个接口，用来提供读取beanDefinition的
+ * 能力
  * Simple interface for bean definition readers that specifies load methods with
  * {@link Resource} and {@link String} location parameters.
  *
